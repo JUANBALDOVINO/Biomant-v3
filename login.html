@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesión - CMMS BioMant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        clinica: {
+                            50: '#f0f7f7',
+                            100: '#d9ecec',
+                            500: '#0d7377',
+                            600: '#0a5c5f',
+                            800: '#0f3d3e',
+                            900: '#0b2c2d'
+                        }
+                    }
+                }
+            }
+        };
+    </script>
+    <style>
+        /* Un solo momento animado: el trazo del monitor se dibuja al cargar */
+        .traza {
+            stroke-dasharray: 1;
+            stroke-dashoffset: 1;
+            animation: dibujar 2.6s cubic-bezier(.4, 0, .2, 1) .3s forwards;
+        }
+        @keyframes dibujar { to { stroke-dashoffset: 0; } }
+        @media (prefers-reduced-motion: reduce) {
+            .traza { animation: none; stroke-dashoffset: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 antialiased">
+    <main class="grid min-h-screen lg:grid-cols-[5fr_7fr]">
+
+        <!-- Panel de marca -->
+        <section class="relative flex flex-col justify-between overflow-hidden bg-clinica-900 px-8 py-8 text-white lg:px-12 lg:py-12">
+            <div>
+                <p class="text-2xl font-bold tracking-tight">BioMant</p>
+                <p class="text-sm text-teal-200">Clínica de los Ríos</p>
+            </div>
+
+            <div class="relative z-10 my-10 max-w-md lg:my-0">
+                <h1 class="text-3xl font-bold leading-tight lg:text-4xl">Cada equipo, con su hoja de vida al día.</h1>
+                <p class="mt-4 text-sm leading-relaxed text-slate-300">Consulta el estado del inventario biomédico y de tecnología, y lleva el control de su mantenimiento.</p>
+            </div>
+
+            <svg class="pointer-events-none absolute inset-x-0 bottom-0 hidden h-auto w-full text-teal-300 lg:block" viewBox="0 0 800 160" fill="none" aria-hidden="true">
+                <path class="traza" pathLength="1" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                      d="M0 110 H130 l12 -9 l12 9 H215 l10 12 l16 -78 l16 98 l10 -32 H360 l16 -14 l20 14 H520 l10 12 l16 -78 l16 98 l10 -32 H650 l16 -14 l20 14 H800"/>
+            </svg>
+            <div class="hidden lg:block h-28" aria-hidden="true"></div>
+        </section>
+
+        <!-- Formulario -->
+        <section class="flex items-center px-6 py-12 sm:px-12 lg:px-20">
+            <div class="mx-auto w-full max-w-sm lg:mx-0">
+                <h2 class="text-2xl font-bold text-clinica-800">Iniciar sesión</h2>
+                <p class="mt-1 text-sm text-slate-500">Usa el correo con el que el administrador te registró.</p>
+
+                <form id="form-login" class="mt-8 space-y-5" novalidate>
+                    <div>
+                        <label for="correo" class="mb-1.5 block text-sm font-medium text-slate-700">Correo</label>
+                        <input id="correo" name="correo" type="email" autocomplete="username" required autofocus
+                               class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-clinica-500 focus:ring-2 focus:ring-clinica-500/40">
+                    </div>
+
+                    <div>
+                        <label for="password" class="mb-1.5 block text-sm font-medium text-slate-700">Contraseña</label>
+                        <div class="relative">
+                            <input id="password" name="password" type="password" autocomplete="current-password" required
+                                   class="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-3.5 pr-20 text-sm outline-none transition focus:border-clinica-500 focus:ring-2 focus:ring-clinica-500/40">
+                            <button id="btn-ver" type="button" aria-controls="password" aria-pressed="false"
+                                    class="absolute inset-y-0 right-0 rounded-r-xl px-3.5 text-sm font-medium text-clinica-600 hover:text-clinica-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clinica-500/40">
+                                Mostrar
+                            </button>
+                        </div>
+                    </div>
+
+                    <p id="mensaje-error" role="alert" aria-live="polite"
+                       class="hidden rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-sm text-rose-800"></p>
+
+                    <button id="btn-entrar" type="submit"
+                            class="w-full rounded-xl bg-clinica-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-clinica-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-clinica-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
+                        Iniciar sesión
+                    </button>
+                </form>
+
+                <p class="mt-6 text-sm text-slate-500">¿No tienes cuenta? Pídele al administrador que te registre.</p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const SESION_KEY = 'biomant_sesion';
+
+        const form = document.getElementById('form-login');
+        const inputCorreo = document.getElementById('correo');
+        const inputPassword = document.getElementById('password');
+        const btnEntrar = document.getElementById('btn-entrar');
+        const btnVer = document.getElementById('btn-ver');
+        const mensajeError = document.getElementById('mensaje-error');
+
+        // Si ya hay una sesión vigente, no tiene sentido mostrar el login
+        function sesionVigente() {
+            try {
+                const { token } = JSON.parse(localStorage.getItem(SESION_KEY));
+                const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+                return payload.exp * 1000 > Date.now();
+            } catch (e) {
+                return false;
+            }
+        }
+
+        if (sesionVigente()) {
+            location.replace('/');
+        }
+
+        function mostrarError(texto) {
+            mensajeError.textContent = texto;
+            mensajeError.classList.remove('hidden');
+        }
+
+        btnVer.addEventListener('click', () => {
+            const oculto = inputPassword.type === 'password';
+            inputPassword.type = oculto ? 'text' : 'password';
+            btnVer.textContent = oculto ? 'Ocultar' : 'Mostrar';
+            btnVer.setAttribute('aria-pressed', String(oculto));
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            mensajeError.classList.add('hidden');
+
+            const correo = inputCorreo.value.trim();
+            const password = inputPassword.value;
+
+            if (!correo || !password) {
+                mostrarError('Ingresa tu correo y tu contraseña.');
+                return;
+            }
+
+            btnEntrar.disabled = true;
+            btnEntrar.textContent = 'Verificando…';
+
+            try {
+                const respuesta = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ correo, password })
+                });
+                const datos = await respuesta.json();
+
+                if (!respuesta.ok) {
+                    mostrarError(datos.error || 'No se pudo iniciar sesión.');
+                    inputPassword.value = '';
+                    inputPassword.focus();
+                    return;
+                }
+
+                localStorage.setItem(SESION_KEY, JSON.stringify({ token: datos.token, usuario: datos.usuario }));
+                location.replace('/');
+            } catch (err) {
+                console.error(err);
+                mostrarError('No se pudo conectar con el servidor. Verifica que esté activo en http://localhost:3000.');
+            } finally {
+                btnEntrar.disabled = false;
+                btnEntrar.textContent = 'Iniciar sesión';
+            }
+        });
+    </script>
+</body>
+</html>
